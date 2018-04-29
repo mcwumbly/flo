@@ -27,20 +27,19 @@ var _ = Describe("Acceptance", func() {
 		var err error
 		tempDir, err = ioutil.TempDir("", "")
 		Expect(err).NotTo(HaveOccurred())
-		inputDir := filepath.Join(tempDir, "some-input-dir")
-		inputFile := filepath.Join(inputDir, "input.txt")
-		err = os.Mkdir(inputDir, os.ModePerm)
 
+		relInputDir := "some-input-dir"
+		relInputFile := filepath.Join(relInputDir, "input.txt")
+
+		err = os.Mkdir(filepath.Join(tempDir, relInputDir), os.ModePerm)
 		Expect(err).NotTo(HaveOccurred())
-		outputDir := filepath.Join(tempDir, "some-output-dir")
-		outputFile = filepath.Join(outputDir, "output.txt")
 
-		_, relOutputFile := filepath.Split(outputFile)
-		relOutputDir := filepath.Base(outputDir)
-		relOutputFile = filepath.Join(relOutputDir, relOutputFile)
-		_, relInputFile := filepath.Split(inputFile)
-		relInputDir := filepath.Base(inputDir)
-		relInputFile = filepath.Join(relInputDir, relInputFile)
+		err = ioutil.WriteFile(filepath.Join(tempDir, relInputDir, "input.txt"), []byte("some-input"), os.ModePerm)
+		Expect(err).NotTo(HaveOccurred())
+
+		relOutputDir := "some-output-dir"
+		relOutputFile := filepath.Join(relOutputDir, "output.txt")
+		outputFile = filepath.Join(tempDir, relOutputDir, "output.txt")
 
 		configFile = filepath.Join(tempDir, "config.yml")
 		config = fmt.Sprintf(`---
@@ -60,9 +59,6 @@ tasks:
 			relOutputFile,
 			relInputDir,
 			relOutputDir)
-
-		err = ioutil.WriteFile(inputFile, []byte("some-input"), os.ModePerm)
-		Expect(err).NotTo(HaveOccurred())
 
 		err = ioutil.WriteFile(configFile, []byte(config), os.ModePerm)
 		Expect(err).NotTo(HaveOccurred())
