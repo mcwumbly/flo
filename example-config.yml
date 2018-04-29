@@ -1,0 +1,13 @@
+---
+name: some-job
+tasks:
+- name: some-task
+  command:
+    name: cp
+    args:
+    - some-input-dir/input.txt
+    - some-output-dir/output.txt
+  inputs:
+  - some-input-dir
+  outputs:
+  - some-output-dir

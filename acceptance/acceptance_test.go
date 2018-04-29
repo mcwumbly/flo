@@ -1,6 +1,7 @@
 package acceptance_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -17,6 +18,8 @@ const TIMEOUT = "5s"
 var (
 	tempDir    string
 	configFile string
+	config     string
+	outputFile string
 )
 
 var _ = Describe("Acceptance", func() {
@@ -24,23 +27,60 @@ var _ = Describe("Acceptance", func() {
 		var err error
 		tempDir, err = ioutil.TempDir("", "")
 		Expect(err).NotTo(HaveOccurred())
+		inputDir := filepath.Join(tempDir, "some-input-dir")
+		inputFile := filepath.Join(inputDir, "input.txt")
+		err = os.Mkdir(inputDir, os.ModePerm)
+
+		Expect(err).NotTo(HaveOccurred())
+		outputDir := filepath.Join(tempDir, "some-output-dir")
+		outputFile = filepath.Join(outputDir, "output.txt")
+
+		_, relOutputFile := filepath.Split(outputFile)
+		relOutputDir := filepath.Base(outputDir)
+		relOutputFile = filepath.Join(relOutputDir, relOutputFile)
+		_, relInputFile := filepath.Split(inputFile)
+		relInputDir := filepath.Base(inputDir)
+		relInputFile = filepath.Join(relInputDir, relInputFile)
+
 		configFile = filepath.Join(tempDir, "config.yml")
+		config = fmt.Sprintf(`---
+name: some-job
+tasks:
+- name: some-task
+  command:
+    name: cp
+    args:
+    - %s
+    - %s
+  inputs:
+  - %s
+  outputs:
+  - %s`,
+			relInputFile,
+			relOutputFile,
+			relInputDir,
+			relOutputDir)
+
+		err = ioutil.WriteFile(inputFile, []byte("some-input"), os.ModePerm)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = ioutil.WriteFile(configFile, []byte(config), os.ModePerm)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		os.RemoveAll(tempDir)
 	})
 
-	It("Reads the config file", func() {
-		config := []byte("some-yaml")
-		err := ioutil.WriteFile(configFile, config, os.ModePerm)
-		Expect(err).NotTo(HaveOccurred())
+	It("Executes the config", func() {
 		cmd := exec.Command(binPath, "-config", configFile)
 		session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(session.Out).Should(gbytes.Say(string(config)))
 		Eventually(session, TIMEOUT).Should(gexec.Exit(0))
+
+		output, err := ioutil.ReadFile(outputFile)
+		Expect(string(output)).To(Equal("some-input"))
 	})
 
 	Context("When the -config flag is not provided", func() {
